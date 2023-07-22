@@ -1,3 +1,0 @@
-o2despy
-standard
-utils
