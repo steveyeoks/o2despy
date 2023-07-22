@@ -1,52 +1,86 @@
-# Copyright (C) 2022. Huawei Technologies Co., Ltd. All rights reserved.
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-
-
+from collections.abc import Iterable
 from functools import partial
-from collections import Iterable
-from utils.readonly import ReadOnlyList
+from inspect import signature
 
 
-class Action:
+class Action(object):
+    """ This class aims to encapsulate a group of subactions.
+
+    These subactions are the methods which have features as below:
+    * have same number and type of unassigned arguments;
+    * have no return value.
+
+    For the subaction with assigned arguments, we call functools.partial to
+    partially apply positional arguments and keyword arguments to the method.
+
+    Attributes:
+        subactions: all the encapsulated callable subactions.
+        partial: an handy interface for construction of a subaction.
+        check_option: whether to check when adding subactions.
+    """
+    partial = partial
+    check_option = True
+
     def __init__(self, *args, **kwargs):
-        self.__subactions = []
-        self.__methods = []
-        self.__arg_num = len(args) + len(kwargs)
+        """ Initialization.
+
+        Args:
+            args: a variable number of unassigned positional argument types.
+            kwargs: a variable number of unassigned keyword argument types.
+        """
+        self._argcount = len(args) + len(kwargs)
+        self._args = args
+        self._kwargs = kwargs
+        self._subactions = []
+
+    def __len__(self):
+        """ Total number of Encapsulated methods. """
+        return len(self._subactions)
+
+    def __add__(self, value):
+        """ Combine all the subactions of self and value.
+
+        Args:
+            value: an Action or a callable object.
+
+        Returns:
+            new_action: a new Action with all subactions of self and value.
+        """
+        new_action = Action(*self._args, **self._kwargs)
+        new_action.add(self, False)
+        new_action.add(value)
+        return new_action
 
     @property
     def subactions(self):
-        return ReadOnlyList(self.__subactions)
-
-    @property
-    def methods(self):
-        return ReadOnlyList(self.__methods)
+        """ All the encapsulated callable objects. """
+        return tuple(self._subactions)
 
     def invoke(self, *args, **kwargs):
-        for func in self.__subactions:
+        """ Invoke all the encapsulated subactions.
+
+        Args:
+            args: a variable number of positional arguments.
+            kwargs: a variable number of keyword arguments.
+        """
+        for func in self._subactions:
             func(*args, **kwargs)
 
     def clear(self):
-        self.__subactions.clear()
-        self.__methods.clear()
+        """ Clear the encapsulated actions. """
+        self._subactions.clear()
 
-    def add(self, action):
+    def add(self, action, check=check_option):
+        """ Encapsulate a subaction.
+
+        Args:
+            action: the subaction(s) to be encapsulated, which could be
+                an Action, a method, or an iterable object of methods.
+            check: whether to check the subaction(s).
+
+        Returns:
+            self: the current Action object itself.
+        """
         if isinstance(action, Action):
             subactions = action.subactions
         elif isinstance(action, dict):
@@ -54,39 +88,45 @@ class Action:
         elif isinstance(action, Iterable):
             subactions = action
         else:
-            subactions = [action]
+            subactions = (action,)
         for subaction in subactions:
-            self.__add_subaction(subaction)
+            self._add_subaction(subaction, check)
         return self
 
-    def __add_subaction(self, subaction):
-        if not callable(subaction):  # check if it is a method
-            raise TypeError(f"'{subaction}' is not callable.")
-        method, result, msg = self.__check_subaction(subaction)  # check the method args num
-        if result is False:
-            raise TypeError(msg)
-        self.__subactions.append(subaction)
-        self.__methods.append(method)
+    def _add_subaction(self, subaction, check):
+        """ Internal method for encapsulating a subaction.
 
-    def __check_subaction(self, subaction):
+        Args:
+            subaction: the subaction to encapsulate.
+            check: whether to check the subaction.
+        """
+        if check:
+            self._check_subaction(subaction)
+        self._subactions.append(subaction)
+
+    def _check_subaction(self, subaction):
+        """ Check whether a subaction is valid.
+
+        Args:
+            subaction: the subaction to check.
+
+        Raises:
+            TypeError: an error occurred when passing in an invalid method.
+        """
+        if not callable(subaction):
+            raise TypeError(f"non-callable type: {subaction}.")
         method = subaction
-        method_arg_num = 0
+        argcount = 0
         if isinstance(subaction, partial):
             method = subaction.func
-            method_arg_num -= len(subaction.args) + len(subaction.keywords)
+            argcount -= len(subaction.args) + len(subaction.keywords)
         if not hasattr(method, '__name__'):
-            raise TypeError(f"Unexpected type.")
-        method_arg_num += method.__code__.co_argcount
-        if hasattr(method, '__self__'):
-            method_arg_num -= 1
-        if method_arg_num == self.__arg_num or method_arg_num == -1:
-            return method, True, ""
-        else:
-            msg = f"'{method.__name__}' has mismatched number of arguments, excepted {self.__arg_num} instead of {method_arg_num}."
-            return method, False, msg
-
-    def __add__(self, other):
-        return self.add(other)
-
-    def __len__(self):
-        return len(self.__subactions)
+            raise TypeError(f"Unexpected type of subaction: {method}.")
+        method_signature = signature(method)
+        for _, param in method_signature.parameters.items():
+            if param.default is param.empty:
+                argcount += 1
+        if argcount != self._argcount:
+            raise TypeError(
+                f"expect arguments number of {self._argcount}, "
+                f"but {method.__qualname__} takes {argcount}.")

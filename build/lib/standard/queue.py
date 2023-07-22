@@ -19,7 +19,7 @@
 # THE SOFTWARE.
 
 
-from o2despy.sandbox import ISandbox, Sandbox
+from o2des.sandbox import ISandbox, Sandbox
 from abc import ABCMeta, abstractclassmethod
 
 

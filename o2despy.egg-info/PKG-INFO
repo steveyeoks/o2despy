@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: o2despy
+Version: 0.0.3
+Summary: Object-oriented Discrete-Event Simulation with Python
+Author: Noah's Ark Lab, National University of Singapore
+License: MIT License
+License-File: License.txt

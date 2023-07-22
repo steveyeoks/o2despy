@@ -19,30 +19,17 @@
 # THE SOFTWARE.
 
 
-import datetime
-import random
-from datetime import timedelta
-from o2despy.sandbox import Sandbox
+from abc import ABC
 
 
-class HelloWorld(Sandbox):
-    def __init__(self, hourly_arrival_rate, seed=0):
-        super().__init__(seed=seed)
-        self.hourly_arrival_rate = hourly_arrival_rate
-        self.hc = self.add_hour_counter()
+class IAssets(ABC):
+    def __init__(self):
+        self.__id = None
 
-        # self.schedule([self.arrive], timedelta(seconds=0))
-        self.schedule([self.arrive])
+    @property
+    def id(self):
+        return self.__id
 
-    def arrive(self):
-        self.hc.observe_change(1)
-        print("{}\tHello World #{}! Cum Value: {}".format(self.clock_time, self.hc.last_count, self.hc.cum_value))
-        self.schedule([self.arrive], timedelta(hours=round(random.expovariate(1 / self.hourly_arrival_rate), 2)))
-
-
-if __name__ == '__main__':
-    # Demo 1
-    print("Demo 1 - Hello world")
-    sim = HelloWorld(2, seed=1)
-    sim.warmup(period=datetime.timedelta(hours=24))
-    sim.run(duration=datetime.timedelta(hours=30))
+    @id.setter
+    def id(self, value):
+        self.__id = value
