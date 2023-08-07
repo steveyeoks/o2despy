@@ -16,7 +16,7 @@ class MMcQueuePull(Sandbox):
         self.server = self.add_child(Server(self.capacity, self.hourly_service_rate))
 
         self.generator.on_generate += self.queue.enqueue
-        self.generator.on_generate += self.server.request_to_start
+        self.queue.on_enqueue += self.server.attempt_to_start
         self.server.on_start += self.queue.dequeue
 
 

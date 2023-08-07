@@ -16,10 +16,10 @@ class Server(Sandbox):
         self.service_list = list()
         self.on_start = Action(Entity)
 
-    def request_to_start(self, load):
+    def attempt_to_start(self, load):
         self.number_pending.observe_change(1)
         self.pending_list.append(load)
-        print("{0}\t{1}\tRequestToStart. #Pending: {2}. #In-Service: {3}. Load: {4}".format(self.clock_time, type(self).__name__,
+        print("{0}\t{1}\tAttemptToStart. #Pending: {2}. #In-Service: {3}. Load: {4}".format(self.clock_time, type(self).__name__,
                                                                                  self.number_pending.last_count,
                                                                                  self.number_in_service.last_count,
                                                                                 load.id))
@@ -41,7 +41,7 @@ class Server(Sandbox):
     def finish(self, load):
         self.number_in_service.observe_change(1)
         self.service_list.remove(load)
-        print("{0}\t{1}\tStart. #Pending: {2}. #In_Service: {3}. Load: {4}".format(self.clock_time, type(self).__name__,
+        print("{0}\t{1}\tFinish. #Pending: {2}. #In_Service: {3}. Load: {4}".format(self.clock_time, type(self).__name__,
                                                                         self.number_pending.last_count,
                                                                         self.number_in_service.last_count,
                                                                         load.id))
