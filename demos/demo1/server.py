@@ -39,7 +39,7 @@ class Server(Sandbox):
         self.on_start.invoke(load)
 
     def finish(self, load):
-        self.number_in_service.observe_change(1)
+        self.number_in_service.observe_change(-1)
         self.service_list.remove(load)
         print("{0}\t{1}\tFinish. #Pending: {2}. #In_Service: {3}. Load: {4}".format(self.clock_time, type(self).__name__,
                                                                         self.number_pending.last_count,
